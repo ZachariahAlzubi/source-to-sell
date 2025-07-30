@@ -20,6 +20,8 @@ import openai
 import httpx
 from dotenv import load_dotenv
 from jinja2 import Environment, FileSystemLoader
+from pydantic import ValidationError
+import re
 
 from schemas import (
     CompanyProfile, EmailDraft, PitchOutline, MeetingSummary,
@@ -112,6 +114,39 @@ class ExtractionService:
             logger.error(f"Error extracting content from {url}: {str(e)}")
             raise Exception(f"Failed to extract content: {str(e)}")
 
+# --- LLM utilities -------------------------------------------------------
+
+COMPANY_PROFILE_FN = [{
+    "name": "company_profile",
+    "description": "Return a structured company profile with provenance.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "company_name": {"type": "string"},
+            "industry": {"type": "string"},
+            "size_hint": {"type": "string"},
+            "products": {"type": "array", "items": {"type": "string"}},
+            "pain_points": {"type": "array", "items": {"type": "string"}},
+            "recent_events": {"type": "array", "items": {"type": "string"}},
+            "claims": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "text": {"type": "string"},
+                        "source_url": {"type": ["string", "null"]},
+                        "evidence_quote": {"type": ["string", "null"]},
+                        "confidence": {"type": "number"}
+                    },
+                    "required": ["text", "confidence"]
+                }
+            }
+        },
+        "required": ["company_name", "claims"]
+    }
+}]
+
+
 class LLMService:
     """Service for all LLM interactions"""
 
@@ -132,77 +167,63 @@ class LLMService:
     
     async def generate_profile(self, account: Account, sources: List[Source]) -> CompanyProfile:
         """Generate company profile with provenance from sources"""
-        
-        # Prepare source context
+
+        # Prepare source context for the prompt
         source_context = ""
         for i, source in enumerate(sources, 1):
             source_context += f"\n--- Source {i}: {source.url} ---\n"
             source_context += f"Title: {source.title}\n"
             source_context += f"Content: {source.raw_text[:2000]}\n"  # Limit per source
-        
-        prompt = f"""
-You are a B2B sales researcher. Analyze the provided source content and generate a detailed company profile.
 
-CRITICAL REQUIREMENTS:
-1. Every factual claim MUST be backed by evidence from the provided sources
-2. If you cannot find evidence in sources, mark source_url as null and set confidence ≤ 0.3
-3. Include direct quotes as evidence_quote for each sourced claim
-4. Confidence scores: 0.8-1.0 (clear evidence), 0.5-0.7 (implied), 0.1-0.3 (unsourced/inferred)
+        system_prompt = (
+            "You are a B2B sales researcher. Only respond via the provided function call."
+        )
+        user_prompt = (
+            "Build a company profile from these sources. If a claim has no source, set "
+            "source_url to null and confidence <= 0.3.\n\n" + source_context
+        )
 
-Company: {account.name}
-Domain: {account.domain}
+        for attempt in range(3):
+            try:
+                rsp = self.client.chat.completions.create(
+                    model=os.getenv("OPENAI_MODEL", "gpt-4-0613"),
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    functions=COMPANY_PROFILE_FN,
+                    function_call={"name": "company_profile"},
+                    temperature=0.2,
+                )
+                msg = rsp.choices[0].message
+                args = getattr(msg, "function_call", None)
+                if args:
+                    arg_str = args.arguments
+                    try:
+                        return self._parse_profile_json(arg_str)
+                    except (json.JSONDecodeError, ValidationError) as e:
+                        logger.debug(
+                            "Parse/validation error: %s | raw: %s",
+                            e,
+                            arg_str[:400],
+                        )
+                        continue
+                # Rare fallbacks where no function_call returned
+                if msg.content:
+                    try:
+                        return self._parse_profile_json(msg.content)
+                    except Exception as e:
+                        logger.debug(
+                            "Failed to parse content: %s | raw: %s",
+                            e,
+                            msg.content[:400],
+                        )
+            except Exception as e:
+                logger.warning(f"LLM call failed on attempt {attempt+1}: {e}")
+                time.sleep(1)
+                continue
 
-Source Content:
-{source_context}
-
-Generate a JSON response with this exact structure:
-{{
-  "company_name": "{account.name}",
-  "industry": "specific industry category",
-  "size_hint": "employee count range or revenue",
-  "products": ["specific product 1", "product 2"],
-  "pain_points": ["specific challenge 1", "challenge 2"],
-  "recent_events": ["recent development 1", "event 2"],
-  "claims": [
-    {{
-      "text": "Factual claim about the company",
-      "source_url": "https://source-url-if-available" or null,
-      "evidence_quote": "Direct quote supporting this claim" or null,
-      "confidence": 0.85
-    }}
-  ]
-}}
-
-Ensure all claims are specific and actionable for sales purposes.
-"""
-        
-        try:
-            response = await self._call_llm(prompt, max_retries=2)
-            profile_data = json.loads(response)
-            
-            # Validate and create claims
-            claims = []
-            for claim_data in profile_data.get("claims", []):
-                claims.append(ClaimData(**claim_data))
-            
-            profile = CompanyProfile(
-                company_name=profile_data["company_name"],
-                industry=profile_data.get("industry"),
-                size_hint=profile_data.get("size_hint"),
-                products=profile_data.get("products", []),
-                pain_points=profile_data.get("pain_points", []),
-                recent_events=profile_data.get("recent_events", []),
-                claims=claims
-            )
-            
-            return profile
-            
-        except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON response: {e}")
-            raise Exception("LLM returned invalid JSON")
-        except Exception as e:
-            logger.error(f"Error generating profile: {e}")
-            raise Exception(f"Profile generation failed: {str(e)}")
+        raise Exception("LLM returned invalid JSON after retries")
     
     async def generate_email(self, account: Account, claims: List[Claim], persona: str) -> EmailDraft:
         """Generate personalized email draft"""
@@ -374,6 +395,22 @@ Focus on actionable items and explicit concerns mentioned.
                     time.sleep(1)
                     continue
                 raise e
+
+    def _parse_profile_json(self, text: str) -> CompanyProfile:
+        """Parse raw LLM text into a CompanyProfile object"""
+        cleaned = text.strip()
+        if cleaned.startswith("```"):
+            # remove markdown fences
+            cleaned = re.sub(r"^```(?:json)?\n", "", cleaned)
+            cleaned = cleaned.rstrip("`")
+
+        if not cleaned.lstrip().startswith("{"):
+            match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+            if match:
+                cleaned = match.group(0)
+
+        data = json.loads(cleaned)
+        return CompanyProfile.model_validate(data)
 
 class AssetService:
     """Service for generating and managing asset files"""
