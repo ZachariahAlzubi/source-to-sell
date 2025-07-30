@@ -20,7 +20,7 @@ pip install -r requirements.txt
 
 # Configure environment
 cp .env.example .env
-# Edit .env and add your OPENAI_API_KEY
+# Edit .env and add your OPENAI_API_KEY (and optionally OPENAI_MODEL)
 
 # Start the API server
 python main.py
@@ -123,6 +123,7 @@ activities: id, account_id, type, content, created_at
 ### Environment Variables (.env)
 ```bash
 OPENAI_API_KEY=sk-...           # Required for LLM features
+OPENAI_MODEL=gpt-4-0613         # LLM model (optional)
 APP_BASE_URL=http://localhost:8000
 DB_PATH=./app.db
 LOG_LEVEL=INFO
