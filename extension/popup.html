@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Source-to-Sell</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            width: 380px;
+            min-height: 400px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 1.25rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 0.875rem;
+        }
+        
+        .content {
+            padding: 1rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #2d3748;
+            font-size: 0.875rem;
+        }
+        
+        input[type="text"], input[type="url"] {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            background: white;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .url-group {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .url-group input {
+            border: none;
+            padding: 0;
+            background: transparent;
+        }
+        
+        .url-group input:focus {
+            box-shadow: none;
+        }
+        
+        .add-url-btn {
+            background: none;
+            border: 1px dashed #cbd5e0;
+            color: #4a5568;
+            padding: 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            width: 100%;
+            transition: all 0.2s;
+        }
+        
+        .add-url-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+        
+        .submit-btn {
+            width: 100%;
+            background: #667eea;
+            color: white;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 4px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-bottom: 1rem;
+        }
+        
+        .submit-btn:hover {
+            background: #5a67d8;
+        }
+        
+        .submit-btn:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            padding: 0.75rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+        }
+        
+        .status.success {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+        
+        .status.error {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #fc8181;
+        }
+        
+        .status.loading {
+            background: #bee3f8;
+            color: #2c5282;
+            border: 1px solid #90cdf4;
+        }
+        
+        .view-account-btn {
+            display: block;
+            text-align: center;
+            background: #38b2ac;
+            color: white;
+            padding: 0.5rem;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+        
+        .detected-info {
+            background: #e6fffa;
+            border: 1px solid #81e6d9;
+            border-radius: 4px;
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+        }
+        
+        .detected-info h4 {
+            color: #234e52;
+            margin-bottom: 0.5rem;
+        }
+        
+        .detected-info p {
+            color: #285e61;
+            margin: 0.25rem 0;
+        }
+        
+        .footer {
+            padding: 1rem;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+            background: white;
+        }
+        
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 0.875rem;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎯 Source-to-Sell</h1>
+        <p>Capture prospects & generate assets</p>
+    </div>
+    
+    <div class="content">
+        <div id="detectedInfo" class="detected-info" style="display: none;">
+            <h4>🔍 Detected Company</h4>
+            <p id="detectedName"></p>
+            <p id="detectedDomain"></p>
+        </div>
+        
+        <form id="prospectForm">
+            <div class="form-group">
+                <label for="companyName">Company Name</label>
+                <input type="text" id="companyName" placeholder="Enter company name" required>
+            </div>
+            
+            <div class="form-group">
+                <label>URLs to Analyze</label>
+                <div class="url-group">
+                    <input type="url" id="companyUrl" placeholder="https://company.com" required>
+                </div>
+                <div id="extraUrls"></div>
+                <button type="button" class="add-url-btn" id="addUrlBtn">
+                    + Add another URL (optional)
+                </button>
+            </div>
+            
+            <button type="submit" class="submit-btn" id="submitBtn">
+                Create Prospect
+            </button>
+        </form>
+        
+        <div id="status" style="display: none;"></div>
+    </div>
+    
+    <div class="footer">
+        <a href="http://localhost:8000" target="_blank">Open Dashboard</a>
+    </div>
+    
+    <script src="popup.js"></script>
+</body>
+</html>

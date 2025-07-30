@@ -17,7 +17,8 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
+    /* CRM-themed primary colors */
+    --primary: 210 100% 45%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -26,17 +27,21 @@ All colors MUST be HSL.
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 120 60% 50%;
+    --accent-foreground: 210 40% 98%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --ring: 210 100% 45%;
 
     --radius: 0.5rem;
+    
+    /* Custom CRM gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(210 100% 45%), hsl(210 100% 50%));
+    --gradient-success: linear-gradient(135deg, hsl(120 60% 45%), hsl(120 60% 50%));
 
     --sidebar-background: 0 0% 98%;
 

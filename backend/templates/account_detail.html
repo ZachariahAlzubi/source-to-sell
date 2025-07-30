@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ account.name }} - Account Details</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            color: #2d3748;
+            line-height: 1.6;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 2rem 0;
+        }
+        
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            text-decoration: none;
+            font-size: 0.875rem;
+        }
+        
+        .account-header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .account-meta {
+            opacity: 0.9;
+            font-size: 0.875rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5a67d8;
+        }
+        
+        .btn-secondary {
+            background: #38b2ac;
+            color: white;
+        }
+        
+        .btn-danger {
+            background: #e53e3e;
+            color: white;
+        }
+        
+        .tabs {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .tab-nav {
+            display: flex;
+            background: #f7fafc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .tab-btn {
+            padding: 1rem 1.5rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        
+        .tab-btn.active {
+            background: white;
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .tab-content {
+            padding: 1.5rem;
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .sources-list, .claims-list, .activities-list {
+            list-style: none;
+        }
+        
+        .source-item, .claim-item, .activity-item {
+            padding: 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+        
+        .source-item h4, .claim-item h4 {
+            margin-bottom: 0.5rem;
+            color: #2d3748;
+        }
+        
+        .source-url {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 0.875rem;
+        }
+        
+        .source-status {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .status-success {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        
+        .status-error {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+        
+        .confidence-score {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background: #bee3f8;
+            color: #2c5282;
+        }
+        
+        .evidence-quote {
+            background: #f7fafc;
+            padding: 0.75rem;
+            border-left: 3px solid #667eea;
+            margin: 0.5rem 0;
+            font-style: italic;
+            font-size: 0.875rem;
+        }
+        
+        .assets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        
+        .asset-card {
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        .asset-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .copy-btn {
+            background: #38b2ac;
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            margin-top: 0.5rem;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #718096;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="account-header">
+                <h1>{{ account.name }}</h1>
+                <div class="account-meta">
+                    {{ account.domain }} • {{ account.industry or 'Industry TBD' }} • 
+                    Added {{ account.created_at.strftime('%B %d, %Y') }}
+                </div>
+            </div>
+            <a href="/" class="back-btn">← Back to Dashboard</a>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="actions">
+            <button class="btn btn-primary" onclick="generateProfile()">
+                🔄 Regenerate Profile
+            </button>
+            <button class="btn btn-secondary" onclick="generateAssets()">
+                📄 Generate Assets
+            </button>
+            <button class="btn btn-danger" onclick="deleteAccount()">
+                🗑️ Delete Account
+            </button>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab-nav">
+                <button class="tab-btn active" onclick="showTab('sources')">
+                    Sources ({{ sources|length }})
+                </button>
+                <button class="tab-btn" onclick="showTab('claims')">
+                    Claims ({{ claims|length }})
+                </button>
+                <button class="tab-btn" onclick="showTab('assets')">
+                    Assets ({{ assets|length }})
+                </button>
+                <button class="tab-btn" onclick="showTab('activities')">
+                    Activities ({{ activities|length }})
+                </button>
+            </div>
+            
+            <div id="sources-tab" class="tab-content active">
+                {% if sources %}
+                <ul class="sources-list">
+                    {% for source in sources %}
+                    <li class="source-item">
+                        <h4>{{ source.title or 'No title' }}</h4>
+                        <a href="{{ source.url }}" class="source-url" target="_blank">{{ source.url }}</a>
+                        <div style="margin-top: 0.5rem;">
+                            <span class="source-status {{ 'status-success' if source.status == 'success' else 'status-error' }}">
+                                {{ source.status }}
+                            </span>
+                            <span style="margin-left: 1rem; font-size: 0.875rem; color: #718096;">
+                                Fetched {{ source.fetched_at.strftime('%Y-%m-%d %H:%M') }}
+                            </span>
+                        </div>
+                        {% if source.raw_text %}
+                        <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #4a5568;">
+                            {{ source.raw_text[:200] }}{% if source.raw_text|length > 200 %}...{% endif %}
+                        </p>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="empty-state">
+                    <h3>No sources found</h3>
+                    <p>Sources will appear here after creating the prospect.</p>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div id="claims-tab" class="tab-content">
+                {% if claims %}
+                <ul class="claims-list">
+                    {% for claim in claims %}
+                    <li class="claim-item">
+                        <h4>{{ claim.text }}</h4>
+                        <div style="margin: 0.5rem 0;">
+                            <span class="confidence-score">
+                                Confidence: {{ "%.0f"|format(claim.confidence * 100) }}%
+                            </span>
+                            {% if claim.source_url %}
+                            <a href="{{ claim.source_url }}" style="margin-left: 1rem; font-size: 0.875rem; color: #667eea;" target="_blank">
+                                Source
+                            </a>
+                            {% else %}
+                            <span style="margin-left: 1rem; font-size: 0.875rem; color: #e53e3e;">
+                                Unsourced
+                            </span>
+                            {% endif %}
+                        </div>
+                        {% if claim.evidence_quote %}
+                        <div class="evidence-quote">
+                            "{{ claim.evidence_quote }}"
+                        </div>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="empty-state">
+                    <h3>No profile generated yet</h3>
+                    <p>Click "Regenerate Profile" to analyze sources and generate claims.</p>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div id="assets-tab" class="tab-content">
+                {% if assets %}
+                <div class="assets-grid">
+                    {% for asset in assets %}
+                    <div class="asset-card">
+                        <div class="asset-icon">
+                            {% if asset.kind == 'email' %}📧
+                            {% elif asset.kind == 'pitch_md' %}📋
+                            {% elif asset.kind == 'landing_zip' %}🌐
+                            {% endif %}
+                        </div>
+                        <h4>
+                            {% if asset.kind == 'email' %}Email Draft
+                            {% elif asset.kind == 'pitch_md' %}Pitch Outline
+                            {% elif asset.kind == 'landing_zip' %}Landing Page
+                            {% endif %}
+                        </h4>
+                        <p style="font-size: 0.875rem; color: #718096; margin: 0.5rem 0;">
+                            {{ asset.created_at.strftime('%Y-%m-%d %H:%M') }}
+                        </p>
+                        <a href="/download/{{ asset.kind }}/{{ account.id }}" class="btn btn-primary" style="text-decoration: none;">
+                            Download
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <h3>No assets generated yet</h3>
+                    <p>Click "Generate Assets" to create email drafts, pitch outlines, and landing pages.</p>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div id="activities-tab" class="tab-content">
+                {% if activities %}
+                <ul class="activities-list">
+                    {% for activity in activities %}
+                    <li class="activity-item">
+                        <h4>{{ activity.type.title().replace('_', ' ') }}</h4>
+                        <p style="font-size: 0.875rem; color: #718096; margin-bottom: 0.5rem;">
+                            {{ activity.created_at.strftime('%Y-%m-%d %H:%M') }}
+                        </p>
+                        <div style="background: #f7fafc; padding: 1rem; border-radius: 4px; font-size: 0.875rem;">
+                            {% if activity.type == 'call_summary' %}
+                                {% set summary = activity.content|tojson|fromjson %}
+                                <strong>Summary:</strong> {{ summary.summary }}<br>
+                                {% if summary.next_steps %}
+                                <strong>Next Steps:</strong>
+                                <ul style="margin-top: 0.5rem;">
+                                    {% for step in summary.next_steps %}
+                                    <li>{{ step.task }} ({{ step.owner }})</li>
+                                    {% endfor %}
+                                </ul>
+                                {% endif %}
+                            {% else %}
+                                {{ activity.content }}
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="empty-state">
+                    <h3>No activities recorded</h3>
+                    <p>Upload meeting transcripts to track calls and notes.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName + '-tab').classList.add('active');
+            event.target.classList.add('active');
+        }
+        
+        async function generateProfile() {
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = '⏳ Generating...';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch(`/accounts/{{ account.id }}/generate_profile`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.detail);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+        
+        async function generateAssets() {
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.textContent = '⏳ Generating...';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch(`/accounts/{{ account.id }}/generate_assets`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        persona: 'Exec'
+                    })
+                });
+                
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.detail);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+        
+        async function deleteAccount() {
+            if (!confirm('Are you sure you want to delete this account? This cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/accounts/{{ account.id }}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    window.location.href = '/';
+                } else {
+                    const error = await response.json();
+                    alert('Error: ' + error.detail);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+        
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                // Show temporary success message
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✓ Copied';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
