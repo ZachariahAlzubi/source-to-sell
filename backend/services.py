@@ -17,6 +17,8 @@ import shutil
 import requests
 from bs4 import BeautifulSoup
 import openai
+import httpx
+from dotenv import load_dotenv
 from jinja2 import Environment, FileSystemLoader
 
 from schemas import (
@@ -26,6 +28,22 @@ from schemas import (
 from models import Account, Source, Claim
 
 logger = logging.getLogger(__name__)
+
+# httpx 0.28 removed the ``proxies`` parameter from ``httpx.Client``. The
+# OpenAI SDK < 1.4 still passes this argument, which raises a ``TypeError``
+# when our environment ships with a newer httpx version.  To maintain
+# compatibility without downgrading httpx we provide a small wrapper class
+# that converts the deprecated ``proxies`` argument into the new ``proxy``
+# argument.  We monkeypatch OpenAI's internal reference so that client
+# initialization succeeds.
+if "proxies" not in httpx.Client.__init__.__code__.co_varnames:
+    class _PatchedClient(httpx.Client):
+        def __init__(self, *args, proxies=None, **kwargs):
+            if proxies is not None and "proxy" not in kwargs:
+                kwargs["proxy"] = proxies
+            super().__init__(*args, **kwargs)
+
+    openai._base_client.httpx.Client = _PatchedClient
 
 class ExtractionService:
     """Service for extracting content from web pages"""
@@ -96,12 +114,20 @@ class ExtractionService:
 
 class LLMService:
     """Service for all LLM interactions"""
-    
+
     def __init__(self):
+        # Load environment variables from a .env file if present
+        load_dotenv()
+
+        api_key = os.getenv("OPENAI_API_KEY")
+        base_url = os.getenv("OPENAI_API_BASE")
+
         self.client = openai.OpenAI(
-            api_key=os.getenv("OPENAI_API_KEY")
+            api_key=api_key,
+            base_url=base_url if base_url else None,
         )
-        if not os.getenv("OPENAI_API_KEY"):
+
+        if not api_key:
             logger.warning("OPENAI_API_KEY not set - LLM features will not work")
     
     async def generate_profile(self, account: Account, sources: List[Source]) -> CompanyProfile:
